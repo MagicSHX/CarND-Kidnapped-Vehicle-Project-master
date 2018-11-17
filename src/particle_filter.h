@@ -29,8 +29,8 @@ class ParticleFilter {
 	
 	// Number of particles to draw
 	int num_particles; 
-	
-	
+
+	std::default_random_engine gen;
 	
 	// Flag, if filter is initialized
 	bool is_initialized;
