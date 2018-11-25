@@ -179,16 +179,36 @@ void ParticleFilter::resample() {
 	// NOTE: You may find std::discrete_distribution helpful here.
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
 	// Get weights and max weight.
-	default_random_engine gen;
-
-	std::discrete_distribution<> dist_weighted(weights.begin(),weights.end());
-	std::vector<Particle> particles_sampled;
-
-	for (int i = 0; i < particles.size() ; ++i) {
-		int sample_index = dist_weighted(gen);
-		particles_sampled.push_back(particles[sample_index]);
+	vector<double> weights;
+	double maxWeight = numeric_limits<double>::min();
+	for(int i = 0; i < num_particles; i++) {
+	weights.push_back(particles[i].weight);
+	if ( particles[i].weight > maxWeight ) {
+	  maxWeight = particles[i].weight;
 	}
-	particles = particles_sampled;
+	}
+
+	// Creating distributions.
+	uniform_real_distribution<double> distDouble(0.0, maxWeight);
+	uniform_int_distribution<int> distInt(0, num_particles - 1);
+
+	// Generating index.
+	int index = distInt(gen);
+
+	double beta = 0.0;
+
+	// the wheel
+	vector<Particle> resampledParticles;
+	for(int i = 0; i < num_particles; i++) {
+	beta += distDouble(gen) * 2.0;
+	while( beta > weights[index]) {
+	  beta -= weights[index];
+	  index = (index + 1) % num_particles;
+	}
+	resampledParticles.push_back(particles[index]);
+	}
+
+	particles = resampledParticles;
 }
 
 Particle ParticleFilter::SetAssociations(Particle& particle, const std::vector<int>& associations, 
