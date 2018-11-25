@@ -16,7 +16,7 @@
 #include <iterator>
 
 #include "particle_filter.h"
-//#define EPS 0.00001
+#define EPS 0.00001
 
 using namespace std;
 
@@ -164,7 +164,11 @@ double stdLandmarkRange = std_landmark[0];
       double dX = observationX - landmarkX;
       double dY = observationY - landmarkY;
       double weight = ( 1/(2*M_PI*stdLandmarkRange*stdLandmarkBearing)) * exp( -( dX*dX/(2*stdLandmarkRange*stdLandmarkRange) + (dY*dY/(2*stdLandmarkBearing*stdLandmarkBearing)) ) );
-      particles[i].weight *= weight;
+      if (weight == 0) {
+        particles[i].weight *= EPS;
+      } else {
+        particles[i].weight *= weight;
+      }
     }
   }
 }
