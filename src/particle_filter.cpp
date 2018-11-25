@@ -68,9 +68,15 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	// Calculate new state.
 	for (int i = 0; i < num_particles; i++) {
 		double theta = particles[i].theta;
-		particles[i].x += velocity / yaw_rate * ( sin( theta + yaw_rate * delta_t ) - sin( theta ) );
-		particles[i].y += velocity / yaw_rate * ( cos( theta ) - cos( theta + yaw_rate * delta_t ) );
-		particles[i].theta += yaw_rate * delta_t;
+	if ( fabs(yaw_rate) < EPS ) { // When yaw is not changing.
+	  particles[i].x += velocity * delta_t * cos( theta );
+	  particles[i].y += velocity * delta_t * sin( theta );
+	  // yaw continue to be the same.
+	} else {
+	  particles[i].x += velocity / yaw_rate * ( sin( theta + yaw_rate * delta_t ) - sin( theta ) );
+	  particles[i].y += velocity / yaw_rate * ( cos( theta ) - cos( theta + yaw_rate * delta_t ) );
+	  particles[i].theta += yaw_rate * delta_t;
+	}
 		// Noise.
 		particles[i].x += dist_x(gen);
 		particles[i].y += dist_y(gen);
