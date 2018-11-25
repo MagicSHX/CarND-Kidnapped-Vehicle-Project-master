@@ -113,81 +113,65 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   and the following is a good resource for the actual equation to implement (look at equation 
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
-  for(Particle& p : particles){    
+double stdLandmarkRange = std_landmark[0];
+  double stdLandmarkBearing = std_landmark[1];
+  for (int i = 0; i < num_particles; i++) {
 
-    //check range, get close landmarks
-    vector<LandmarkObs> predictions;    
-    for(Map::single_landmark_s& landmark : map_landmarks.landmark_list){
-      double d = dist(landmark.x_f, landmark.y_f, p.x, p.y);      
-      if(d < sensor_range){	
-	LandmarkObs new_obs = {};
-	new_obs.id = landmark.id_i;
-	new_obs.x  = landmark.x_f;
-	new_obs.y  = landmark.y_f;
-	predictions.push_back(new_obs);
+    double x = particles[i].x;
+    double y = particles[i].y;
+    double theta = particles[i].theta;
+    // Find landmarks in particle's range.
+    double sensor_range_2 = sensor_range * sensor_range;
+    vector<LandmarkObs> inRangeLandmarks;
+    for(unsigned int j = 0; j < map_landmarks.landmark_list.size(); j++) {
+      float landmarkX = map_landmarks.landmark_list[j].x_f;
+      float landmarkY = map_landmarks.landmark_list[j].y_f;
+      int id = map_landmarks.landmark_list[j].id_i;
+      double dX = x - landmarkX;
+      double dY = y - landmarkY;
+      if ( dX*dX + dY*dY <= sensor_range_2 ) {
+        inRangeLandmarks.push_back(LandmarkObs{ id, landmarkX, landmarkY });
       }
     }
-        
-		
-		
-		
-    //transform observations to map's coordinate
-    //helper variables
-    const double x = p.x;
-    const double y = p.y;
-    const double theta = p.theta;
-    const double cos_theta = cos(theta);
-    const double sin_theta = sin(theta);
-    //temp vector for transformed observations
-    vector<LandmarkObs> particle_observations;    
-    for(LandmarkObs& o : observations){
-      LandmarkObs no = {};
-      no.id = o.id;
-      //Udacity Transformation (not working)
-      //no.x +=  x*cos_theta + y*sin_theta;
-      //no.y += -x*sin_theta + y*cos_theta;
-      //http://planning.cs.uiuc.edu/node99.html Transformation
-      no.x = o.x*cos_theta - o.y*sin_theta + x;
-      no.y = o.x*sin_theta + o.y*cos_theta + y;     
-      particle_observations.push_back(no);
+    // Transform observation coordinates.
+    vector<LandmarkObs> mappedObservations;
+    for(unsigned int j = 0; j < observations.size(); j++) {
+      double xx = cos(theta)*observations[j].x - sin(theta)*observations[j].y + x;
+      double yy = sin(theta)*observations[j].x + cos(theta)*observations[j].y + y;
+      mappedObservations.push_back(LandmarkObs{ observations[j].id, xx, yy });
     }
-    
-    //data association between landmarks and observations
-    dataAssociation(predictions, particle_observations);   
-    
-    //record associations
-    vector<int> associations;
-    vector<double> sense_x;
-    vector<double> sense_y;
-    //compute weights
-    double weight=1;
-    double std_2_pi = 2.0*M_PI*std_landmark[0]*std_landmark[1];
-    double std_x_2  = 2.0*std_landmark[0]*std_landmark[0];
-    double std_y_2  = 2.0*std_landmark[1]*std_landmark[1];
-    for(LandmarkObs& o : particle_observations){
-      //recover associated landmark
-      Map::single_landmark_s m =  map_landmarks.landmark_list.at(o.id -1);//map_id->second];
-      //compute Multivariate-Gaussian probability
-      double e1 = pow(o.x - m.x_f, 2);
-      double e2 = pow(o.y - m.y_f, 2);
-      double e = (e1/std_x_2 + e2/std_y_2);
-      double ee = exp(-e);
-      double w = ee/std_2_pi;
-      //prod of all weights
-      weight *= w;
-      //record association
-      associations.push_back(o.id);
-      sense_x.push_back(o.x);
-      sense_y.push_back(o.y);      
+    // Observation association to landmark.
+    dataAssociation(inRangeLandmarks, mappedObservations);
+    // Reseting weight.
+    particles[i].weight = 1.0;
+    // Calculate weights.
+    for(unsigned int j = 0; j < mappedObservations.size(); j++) {
+      double observationX = mappedObservations[j].x;
+      double observationY = mappedObservations[j].y;
+      int landmarkId = mappedObservations[j].id;
+      double landmarkX, landmarkY;
+      unsigned int k = 0;
+      unsigned int nLandmarks = inRangeLandmarks.size();
+      bool found = false;
+      while( !found && k < nLandmarks ) {
+        if ( inRangeLandmarks[k].id == landmarkId) {
+          found = true;
+          landmarkX = inRangeLandmarks[k].x;
+          landmarkY = inRangeLandmarks[k].y;
+        }
+        k++;
+      }
+      // Calculating weight.
+      double dX = observationX - landmarkX;
+      double dY = observationY - landmarkY;
+      double weight = ( 1/(2*M_PI*stdLandmarkRange*stdLandmarkBearing)) * exp( -( dX*dX/(2*stdLandmarkRange*stdLandmarkRange) + (dY*dY/(2*stdLandmarkBearing*stdLandmarkBearing)) ) );
+      if (weight == 0) {
+        particles[i].weight *= 0.00001;
+      } else {
+        particles[i].weight *= weight;
+      }
     }
-    //update particle with final weight
-    p.weight = weight;
-    //insert into weight vector
-    weights.push_back(weight);
-    //update particle's associations
-    SetAssociations(p, associations, sense_x, sense_y);    
   }
-  cout << "UPDATE WEIGHTS OK\n";
 }
 
 void ParticleFilter::resample() {
@@ -199,6 +183,7 @@ void ParticleFilter::resample() {
 
 	std::discrete_distribution<> dist_weighted(weights.begin(),weights.end());
 	std::vector<Particle> particles_sampled;
+
 	for (int i = 0; i < particles.size() ; ++i) {
 		int sample_index = dist_weighted(gen);
 		particles_sampled.push_back(particles[sample_index]);
