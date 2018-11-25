@@ -128,6 +128,9 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
       }
     }
         
+		
+		
+		
     //transform observations to map's coordinate
     //helper variables
     const double x = p.x;
