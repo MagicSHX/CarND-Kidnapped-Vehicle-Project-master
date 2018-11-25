@@ -25,7 +25,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	//   x, y, theta and their uncertainties from GPS) and all weights to 1. 
 	// Add random Gaussian noise to each particle.
 	// NOTE: Consult particle_filter.h for more information about this method (and others in this file).
-	if (initialized) {
+	if (is_initialized) {
 	return;
 	}
 	// Initializing the number of particles
@@ -49,7 +49,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	particle.weight = 1.0;
 	particles.push_back(particle);
 	}
-	initialized = true;
+	is_initialized = true;
 }
 
 void ParticleFilter::prediction(double delta_t, double std_pos[], double velocity, double yaw_rate) {
@@ -90,7 +90,7 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	double Distance_min = numeric_limits<double>::max();
 	int indicator = -1;
 	for (unsigned j = 0; j < Predictions_num; j++ ) {
-	  double distance = (observations[i].x - predicted[j].x)*(observations[i].x - predicted[j].x)+(observations[i].y - predicted[j].y)*(observations[i].y - predicted[j].y)
+	  double distance = (observations[i].x - predicted[j].x)*(observations[i].x - predicted[j].x)+(observations[i].y - predicted[j].y)*(observations[i].y - predicted[j].y);
 	  if ( distance < Distance_min ) {
 		Distance_min = distance;
 		indicator = predicted[j].id;
