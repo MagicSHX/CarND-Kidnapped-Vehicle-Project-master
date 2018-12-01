@@ -5,3 +5,4 @@ cd CarND-Kidnapped-Vehicle-Project-master
 mkdir build && cd build
 cmake .. && make
 ./particle_filter
+y
