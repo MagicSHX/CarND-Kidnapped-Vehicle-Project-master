@@ -35,7 +35,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	particles.push_back(particle);
 	}
 	is_initialized = true;
-	cout<<"initialized already"<<endl;
+	cout<<"initialized already!!"<<endl;
 }
 
 void ParticleFilter::prediction(double delta_t, double std_pos[], double velocity, double yaw_rate) {
@@ -57,7 +57,8 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	  particles[i].theta += yaw_rate * delta_t + dist_theta(gen);
 	}
 	}
-	cout<<"x, y : "<<particles[0].x<<'\t'<<particles[0].y<<endl;
+	cout<<"x_position: "<<particles[0].x<<endl;
+	cout<<"y_position: "<<particles[0].y<<endl;
 }
 
 void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations) {
@@ -66,15 +67,13 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to 
 	//   implement this method and use it as a helper during the updateWeights phase.
 
-	unsigned int Observations_num = observations.size();
-	unsigned int Predictions_num = predicted.size();
-	for (unsigned int i = 0; i < Observations_num; i++) { 
-	double Distance_min = numeric_limits<double>::max();
+	for (unsigned int i = 0; i < observations.size(); i++) { 
+	double Min_distance = numeric_limits<double>::max();
 	int indicator = -1;
-	for (unsigned j = 0; j < Predictions_num; j++ ) {
+	for (unsigned j = 0; j < predicted.size(); j++ ) {
 	  double distance = (observations[i].x - predicted[j].x)*(observations[i].x - predicted[j].x)+(observations[i].y - predicted[j].y)*(observations[i].y - predicted[j].y);
-	  if ( distance < Distance_min ) {
-		Distance_min = distance;
+	  if ( distance < Min_distance ) {
+		Min_distance = distance;
 		indicator = predicted[j].id;
 	  }
 	}
@@ -94,19 +93,17 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   and the following is a good resource for the actual equation to implement (look at equation 
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
-  double stdLandmarkRange = std_landmark[0];
-  double stdLandmarkBearing = std_landmark[1];
   for (int i = 0; i < num_particles; i++) {
     double x = particles[i].x;
     double y = particles[i].y;
     double theta = particles[i].theta;
     vector<LandmarkObs> inRangeLandmarks;
     for(unsigned int j = 0; j < map_landmarks.landmark_list.size(); j++) {
-      float landmarkX = map_landmarks.landmark_list[j].x_f;
-      float landmarkY = map_landmarks.landmark_list[j].y_f;
+      float LM_x = map_landmarks.landmark_list[j].x_f;
+      float LM_y = map_landmarks.landmark_list[j].y_f;
       int id = map_landmarks.landmark_list[j].id_i;
-      if ( (x - landmarkX)*(x - landmarkX) + (y - landmarkY)*(y - landmarkY) <= sensor_range * sensor_range ) {
-        inRangeLandmarks.push_back(LandmarkObs{ id, landmarkX, landmarkY });
+      if ( (x - LM_x)*(x - LM_x) + (y - LM_y)*(y - LM_y) <= sensor_range * sensor_range ) {
+        inRangeLandmarks.push_back(LandmarkObs{ id, LM_x, LM_y });
       }
     }
     vector<LandmarkObs> mappedObservations;
@@ -119,19 +116,19 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
       double observationX = mappedObservations[j].x;
       double observationY = mappedObservations[j].y;
       int landmarkId = mappedObservations[j].id;
-      double landmarkX, landmarkY;
+      double LM_x, LM_y;
       unsigned int k = 0;
       unsigned int nLandmarks = inRangeLandmarks.size();
       bool found = false;
       while( !found && k < nLandmarks ) {
         if ( inRangeLandmarks[k].id == landmarkId) {
           found = true;
-          landmarkX = inRangeLandmarks[k].x;
-          landmarkY = inRangeLandmarks[k].y;
+          LM_x = inRangeLandmarks[k].x;
+          LM_y = inRangeLandmarks[k].y;
         }
         k++;
       }
-      double weight = ( 1/(2*M_PI*stdLandmarkRange*stdLandmarkBearing)) * exp( -( (observationX - landmarkX)*(observationX - landmarkX)/(2*stdLandmarkRange*stdLandmarkRange) + ((observationY - landmarkY)*(observationY - landmarkY)/(2*stdLandmarkBearing*stdLandmarkBearing)) ) );
+      double weight = ( 1/(2*M_PI*std_landmark[0]*std_landmark[1])) * exp( -( (observationX - LM_x)*(observationX - LM_x)/(2*std_landmark[0]*std_landmark[0]) + ((observationY - LM_y)*(observationY - LM_y)/(2*std_landmark[1]*std_landmark[1])) ) );
       if (weight == 0) {
         particles[i].weight *= 0.00001;
       } else {
